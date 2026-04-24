@@ -1,21 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Archive</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<title>Archive</title>
+<link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <main class="page">
-    <h1>Archive</h1>
-    <p class="subtitle">Private notes will be placed here later.</p>
+<main class="page">
+  <h1>Archive</h1>
 
-    <section class="card">
-      <p>Password page coming soon.</p>
-    </section>
+  <div class="card">
+    <input id="pwd" type="password" placeholder="Enter password">
+    <button onclick="decrypt()">Unlock</button>
 
-    <p class="small"><a href="index.html">Back to English Notes</a></p>
-  </main>
+    <p id="output"></p>
+  </div>
+</main>
+
+<script>
+const encryptedData = "把你刚刚生成的乱码粘这里";
+
+async function decrypt() {
+  const password = document.getElementById("pwd").value;
+  const enc = new TextEncoder();
+
+  const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+  const iv = data.slice(0, 12);
+  const ciphertext = data.slice(12);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: enc.encode("salt"),
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      ciphertext
+    );
+
+    document.getElementById("output").innerText =
+      new TextDecoder().decode(decrypted);
+
+  } catch {
+    document.getElementById("output").innerText = "Wrong password.";
+  }
+}
+</script>
+
 </body>
 </html>
