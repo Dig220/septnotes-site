@@ -1,70 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Archive</title>
-<link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Archive</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-<main class="page">
-  <h1>Archive</h1>
+  <main class="page">
+    <h1>Archive</h1>
 
-  <div class="card">
-    <input id="pwd" type="password" placeholder="Enter password">
-    <button onclick="decrypt()">Unlock</button>
+    <div class="card">
+      <input id="pwd" type="password" placeholder="Enter password">
+      <button onclick="decrypt()">Unlock</button>
 
-    <p id="output"></p>
-  </div>
-</main>
+      <p id="output"></p>
+    </div>
+  </main>
 
-<script>
-const encryptedData = "81NcuV9m5NhkzEiGUthtlmndHMWvTjB3gvJ3NO+s8QHjFQxPRdvNj8/O5eKRhEq2V5s=";
+  <script>
+    const encryptedData = "把新的密文粘贴到这里";
 
-async function decrypt() {
-  const password = document.getElementById("pwd").value;
-  const enc = new TextEncoder();
+    async function decrypt() {
+      const password = document.getElementById("pwd").value;
+      const output = document.getElementById("output");
 
-  const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
-  const iv = data.slice(0, 12);
-  const ciphertext = data.slice(12);
+      if (!password) {
+        output.innerText = "Please enter a password.";
+        return;
+      }
 
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveKey"]
-  );
+      try {
+        const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
 
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: enc.encode("salt"),
-      iterations: 100000,
-      hash: "SHA-256"
-    },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"]
-  );
+        const salt = data.slice(0, 16);
+        const iv = data.slice(16, 28);
+        const ciphertext = data.slice(28);
 
-  try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      key,
-      ciphertext
-    );
+        const enc = new TextEncoder();
 
-    document.getElementById("output").innerText =
-      new TextDecoder().decode(decrypted);
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          enc.encode(password),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"]
+        );
 
-  } catch {
-    document.getElementById("output").innerText = "Wrong password.";
-  }
-}
-</script>
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 200000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
 
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          ciphertext
+        );
+
+        output.innerText = new TextDecoder().decode(decrypted);
+      } catch (error) {
+        output.innerText = "Wrong password.";
+      }
+    }
+  </script>
 </body>
 </html>
