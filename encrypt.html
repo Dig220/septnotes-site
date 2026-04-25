@@ -1,73 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Encrypt Tool</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Encoder — Sept Notes</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
+
 <body>
-  <h2>Encrypt your message</h2>
+  <div class="page-wrapper">
+    <header class="site-header">
+      <div class="masthead">
+        <a href="/" class="back-link">← Sept Notes</a>
+        <span class="dot">·</span>
+        <span class="meta">Text Encoder</span>
+      </div>
+    </header>
 
-  <textarea id="input" rows="10" cols="70" placeholder="Write your message..."></textarea><br><br>
+    <main class="page encrypt-page">
+      <section class="hero">
+        <p class="section-label">Private Tool</p>
+        <h1 class="title">Text Encoder</h1>
+        <p class="subtitle">
+          Write a note, preview the plain text, then encrypt it into a protected archive entry.
+        </p>
+      </section>
 
-  <input id="password" type="password" placeholder="Password"><br><br>
+      <section class="editor-card">
+        <label for="input" class="input-label">Plain Text</label>
+        <textarea
+          id="input"
+          class="editor-textarea"
+          placeholder="Write your message here..."
+          spellcheck="true"
+        ></textarea>
 
-  <button onclick="encrypt()">Encrypt</button>
+        <div class="editor-tools">
+          <button id="previewBtn" class="secondary-button" type="button">Preview</button>
+          <button id="clearBtn" class="secondary-button" type="button">Clear</button>
+        </div>
+      </section>
 
-  <h3>Encrypted Output:</h3>
-  <textarea id="output" rows="10" cols="70" readonly></textarea>
+      <section class="preview-card hidden" id="previewCard">
+        <p class="section-label">Preview</p>
+        <div class="preview-content" id="previewOutput"></div>
+      </section>
+
+      <section class="editor-card">
+        <label for="password" class="input-label">Passphrase</label>
+        <input
+          id="password"
+          class="tool-input"
+          type="password"
+          placeholder="Enter passphrase"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        >
+
+        <div class="editor-tools">
+          <button id="encryptBtn" class="primary-button" type="button">
+            <span class="btn-label">Encrypt</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="editor-card">
+        <label for="output" class="input-label">Encrypted Output</label>
+        <textarea
+          id="output"
+          class="output-textarea"
+          placeholder="Encrypted text will appear here..."
+          readonly
+        ></textarea>
+
+        <div class="editor-tools">
+          <button id="copyBtn" class="secondary-button" type="button">Copy Output</button>
+        </div>
+
+        <p class="tool-note">
+          Paste this encrypted output into <code>archive.html</code> as the value of <code>encryptedData</code>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="page-footer outer-footer">
+      <p class="colophon">Local encoding tool. Plain text is not uploaded.</p>
+    </footer>
+  </div>
 
   <script>
-    async function encrypt() {
-      const text = document.getElementById("input").value;
-      const password = document.getElementById("password").value;
+    const input = document.getElementById("input");
+    const password = document.getElementById("password");
+    const output = document.getElementById("output");
 
-      if (!text || !password) {
-        alert("Please enter both message and password.");
+    const previewBtn = document.getElementById("previewBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const encryptBtn = document.getElementById("encryptBtn");
+    const copyBtn = document.getElementById("copyBtn");
+
+    const previewCard = document.getElementById("previewCard");
+    const previewOutput = document.getElementById("previewOutput");
+
+    previewBtn.addEventListener("click", previewText);
+    clearBtn.addEventListener("click", clearText);
+    encryptBtn.addEventListener("click", encrypt);
+    copyBtn.addEventListener("click", copyOutput);
+
+    function previewText() {
+      const text = input.value.trim();
+
+      if (!text) {
+        previewCard.classList.add("hidden");
         return;
       }
 
-      const enc = new TextEncoder();
+      previewOutput.textContent = text;
+      previewCard.classList.remove("hidden");
+      previewCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
 
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iv = crypto.getRandomValues(new Uint8Array(12));
+    function clearText() {
+      input.value = "";
+      output.value = "";
+      previewOutput.textContent = "";
+      previewCard.classList.add("hidden");
+      input.focus();
+    }
 
-      const keyMaterial = await crypto.subtle.importKey(
-        "raw",
-        enc.encode(password),
-        { name: "PBKDF2" },
-        false,
-        ["deriveKey"]
-      );
+    async function encrypt() {
+      const text = input.value;
+      const passphrase = password.value;
 
-      const key = await crypto.subtle.deriveKey(
-        {
-          name: "PBKDF2",
-          salt: salt,
-          iterations: 200000,
-          hash: "SHA-256"
-        },
-        keyMaterial,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt"]
-      );
+      if (!text || !passphrase) {
+        alert("Please enter both message and passphrase.");
+        return;
+      }
 
-      const encrypted = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: iv },
-        key,
-        enc.encode(text)
-      );
+      encryptBtn.classList.add("loading");
+      encryptBtn.disabled = true;
 
-      const combined = new Uint8Array(
-        salt.length + iv.length + encrypted.byteLength
-      );
+      await new Promise(r => setTimeout(r, 60));
 
-      combined.set(salt, 0);
-      combined.set(iv, salt.length);
-      combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+      try {
+        const enc = new TextEncoder();
 
-      const base64 = btoa(String.fromCharCode(...combined));
-      document.getElementById("output").value = base64;
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          enc.encode(passphrase),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"]
+        );
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 200000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt"]
+        );
+
+        const encrypted = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          enc.encode(text)
+        );
+
+        const combined = new Uint8Array(
+          salt.length + iv.length + encrypted.byteLength
+        );
+
+        combined.set(salt, 0);
+        combined.set(iv, salt.length);
+        combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+        const base64 = btoa(String.fromCharCode(...combined));
+        output.value = base64;
+      } catch (error) {
+        alert("Encryption failed. Please try again.");
+      } finally {
+        encryptBtn.classList.remove("loading");
+        encryptBtn.disabled = false;
+      }
+    }
+
+    async function copyOutput() {
+      if (!output.value) {
+        alert("There is no encrypted output to copy yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(output.value);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => {
+          copyBtn.textContent = "Copy Output";
+        }, 1200);
+      } catch (error) {
+        output.select();
+        document.execCommand("copy");
+        copyBtn.textContent = "Copied";
+        setTimeout(() => {
+          copyBtn.textContent = "Copy Output";
+        }, 1200);
+      }
     }
   </script>
 </body>
