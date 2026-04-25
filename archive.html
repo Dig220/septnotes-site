@@ -1,38 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Archive</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archive — Sept Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-  <main class="page">
-    <h1>Archive</h1>
+  <div class="page-wrapper">
+    <header class="site-header">
+      <div class="masthead">
+        <a href="index.html" class="back-link">← Sept Notes</a>
+        <span class="dot">·</span>
+        <span class="meta">Archive</span>
+      </div>
+    </header>
 
-    <div class="card">
-      <input id="pwd" type="password" placeholder="Enter password">
-      <button onclick="decrypt()">Unlock</button>
+    <main class="page archive-page">
+      <section class="hero">
+        <p class="section-label">Restricted Section</p>
+        <h1 class="title">Archive</h1>
+        <p class="subtitle">A small private collection. Enter the passphrase to read.</p>
+      </section>
 
-      <p id="output"></p>
+      <div class="unlock-card" id="unlockCard">
+        <label for="pwd" class="input-label">Passphrase</label>
+        <div class="input-row">
+          <input id="pwd" type="password" placeholder="Type and press Enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button id="unlockBtn" type="button">
+            <span class="btn-label">Unlock</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <article class="message-card hidden" id="messageCard">
+        <p class="section-label">Entry</p>
+        <div class="message-content" id="output"></div>
+      </article>
+    </main>
+
+    <footer class="page-footer outer-footer">
+      <p class="colophon">Encrypted with AES-256. The server never sees the plaintext.</p>
+    </footer>
+  </div>
+
+  <!-- Wrong-password modal -->
+  <div class="modal-overlay" id="modalOverlay" aria-hidden="true">
+    <div class="modal" role="alertdialog" aria-labelledby="modalTitle" aria-describedby="modalText">
+      <p class="modal-eyebrow">Error</p>
+      <h2 id="modalTitle" class="modal-title">Access Denied</h2>
+      <p id="modalText" class="modal-text">The passphrase you entered does not match. Please try again.</p>
+      <button class="modal-button" id="modalDismiss" type="button">Dismiss</button>
     </div>
-  </main>
+  </div>
 
   <script>
     const encryptedData = "bqfaB3HUxR8trcVQct/TcyRbcRuGFp1310zJ3+tSjysUs2Tw6AqqtaRST1Js4l0ut8GoxldOpt6uq2/dWg==";
 
-    async function decrypt() {
-      const password = document.getElementById("pwd").value;
-      const output = document.getElementById("output");
+    const pwdInput     = document.getElementById("pwd");
+    const unlockBtn    = document.getElementById("unlockBtn");
+    const unlockCard   = document.getElementById("unlockCard");
+    const messageCard  = document.getElementById("messageCard");
+    const output       = document.getElementById("output");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalDismiss = document.getElementById("modalDismiss");
 
+    unlockBtn.addEventListener("click", handleDecrypt);
+    modalDismiss.addEventListener("click", closeModal);
+    pwdInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleDecrypt();
+    });
+
+    function showModal() {
+      modalOverlay.classList.add("visible");
+      modalOverlay.setAttribute("aria-hidden", "false");
+      setTimeout(() => modalDismiss.focus(), 50);
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("visible");
+      modalOverlay.setAttribute("aria-hidden", "true");
+      pwdInput.value = "";
+      pwdInput.focus();
+    }
+
+    async function handleDecrypt() {
+      const password = pwdInput.value;
       if (!password) {
-        output.innerText = "Please enter a password.";
+        pwdInput.focus();
         return;
       }
+      if (unlockBtn.disabled) return;
+
+      unlockBtn.classList.add("loading");
+      unlockBtn.disabled = true;
+
+      // Tiny delay so the spinner paints before the heavy crypto work
+      await new Promise(r => setTimeout(r, 60));
 
       try {
         const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
-
         const salt = data.slice(0, 16);
         const iv = data.slice(16, 28);
         const ciphertext = data.slice(28);
@@ -66,9 +137,16 @@
           ciphertext
         );
 
-        output.innerText = new TextDecoder().decode(decrypted);
-      } catch (error) {
-        output.innerText = "Wrong password.";
+        const text = new TextDecoder().decode(decrypted);
+
+        output.textContent = text;
+        unlockCard.classList.add("hidden");
+        messageCard.classList.remove("hidden");
+      } catch (err) {
+        showModal();
+      } finally {
+        unlockBtn.classList.remove("loading");
+        unlockBtn.disabled = false;
       }
     }
   </script>
