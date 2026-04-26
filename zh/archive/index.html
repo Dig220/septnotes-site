@@ -1,1 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archive — Sept Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=3" />
+</head>
+<body class="zh-page">
+  <div class="page-wrapper">
+    <header class="site-header">
+      <div class="masthead">
+        <a href="/zh" class="back-link">← Sept Notes</a>
+        <span class="dot">·</span>
+        <span class="meta">档案</span>
+        <a href="/archive" class="lang-switch">Switch to English</a>
+      </div>
+    </header>
 
+    <main class="page archive-page">
+      <section class="hero">
+        <p class="section-label">限制区域</p>
+        <h1 class="title">Archive</h1>
+        <p class="subtitle">一个小型私人收藏。请输入通行短语后阅读。</p>
+      </section>
+
+      <div class="unlock-card" id="unlockCard">
+        <label for="pwd" class="input-label">通行短语</label>
+        <div class="input-row">
+          <input id="pwd" type="password" placeholder="输入后按 Enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button id="unlockBtn" type="button">
+            <span class="btn-label">解锁</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <article class="message-card hidden" id="messageCard">
+        <p class="section-label">条目</p>
+        <div class="message-content" id="output"></div>
+      </article>
+    </main>
+
+    <footer class="page-footer outer-footer">
+      <p class="colophon">一处安静的私人笔记区域。</p>
+    </footer>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay" aria-hidden="true">
+    <div class="modal" role="alertdialog" aria-labelledby="modalTitle" aria-describedby="modalText">
+      <p class="modal-eyebrow">错误</p>
+      <h2 id="modalTitle" class="modal-title">无法访问</h2>
+      <p id="modalText" class="modal-text">你输入的通行短语不匹配，请重新尝试。</p>
+      <button class="modal-button" id="modalDismiss" type="button">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    const encryptedData = "NhRQBu8mWGqTfmEQiP+/3Fkgy22CjhsHjZoNy30rIPycLR3AMIwQylaFEBPDtzS+XtMw8UKWjf9Mw1gVvzjxMaypicYNjLeuwiHMe2HB+tudah/8TGPK/VI919F1DQz6FbEwVpsOAO+AuCvdPuqXwTc/jqOBVSsec3KB";
+
+    const pwdInput     = document.getElementById("pwd");
+    const unlockBtn    = document.getElementById("unlockBtn");
+    const unlockCard   = document.getElementById("unlockCard");
+    const messageCard  = document.getElementById("messageCard");
+    const output       = document.getElementById("output");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalDismiss = document.getElementById("modalDismiss");
+
+    unlockBtn.addEventListener("click", handleDecrypt);
+    modalDismiss.addEventListener("click", closeModal);
+    pwdInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleDecrypt();
+    });
+
+    function showModal() {
+      modalOverlay.classList.add("visible");
+      modalOverlay.setAttribute("aria-hidden", "false");
+      setTimeout(() => modalDismiss.focus(), 50);
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("visible");
+      modalOverlay.setAttribute("aria-hidden", "true");
+      pwdInput.value = "";
+      pwdInput.focus();
+    }
+
+    async function handleDecrypt() {
+      const password = pwdInput.value;
+      if (!password) {
+        pwdInput.focus();
+        return;
+      }
+      if (unlockBtn.disabled) return;
+
+      unlockBtn.classList.add("loading");
+      unlockBtn.disabled = true;
+
+      await new Promise(r => setTimeout(r, 60));
+
+      try {
+        const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+        const salt = data.slice(0, 16);
+        const iv = data.slice(16, 28);
+        const ciphertext = data.slice(28);
+
+        const enc = new TextEncoder();
+
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          enc.encode(password),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"]
+        );
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 200000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          ciphertext
+        );
+
+        const text = new TextDecoder().decode(decrypted);
+
+        output.textContent = text;
+        unlockCard.classList.add("hidden");
+        messageCard.classList.remove("hidden");
+      } catch (err) {
+        showModal();
+      } finally {
+        unlockBtn.classList.remove("loading");
+        unlockBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
