@@ -211,6 +211,8 @@
         } else {
           showModal();
         }
+      } catch (error) {
+        showModal("Connection Error", "The archive could not load entries. Please try again later.");
       } finally {
         unlockBtn.classList.remove("loading");
         unlockBtn.disabled = false;
