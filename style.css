@@ -15,6 +15,9 @@
   --accent-deep: #a8623f;
   --serif: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --serif-zh: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --sans-zh: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -92,6 +95,32 @@ body {
 
 .masthead .back-link:hover {
   color: var(--accent);
+}
+
+.lang-switch {
+  margin-left: auto;
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.lang-switch:hover {
+  color: var(--accent-deep);
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.lang-switch::before {
+  content: "◎";
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--ink-muted);
 }
 
 /* ---------- Page container ---------- */
@@ -725,4 +754,50 @@ body {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ============================================
+   Chinese language pages
+   ============================================ */
+
+.zh-page {
+  font-family: var(--sans-zh);
+}
+
+.zh-page .title,
+.zh-page .subtitle,
+.zh-page .lede,
+.zh-page .link-list a,
+.zh-page .link-note,
+.zh-page .note-list em,
+.zh-page .footer-text,
+.zh-page .masthead .meta,
+.zh-page .message-content,
+.zh-page .preview-content {
+  font-family: var(--serif-zh);
+}
+
+.zh-page .title {
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.zh-page .subtitle {
+  font-style: normal;
+  line-height: 1.75;
+}
+
+.zh-page .lede {
+  line-height: 1.9;
+}
+
+.zh-page .section-label,
+.zh-page .colophon,
+.zh-page .input-label {
+  font-family: var(--sans-zh);
+  letter-spacing: 0.18em;
+}
+
+.zh-page .note-list li {
+  line-height: 1.9;
 }
