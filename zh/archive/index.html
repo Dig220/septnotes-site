@@ -62,8 +62,10 @@
     </div>
   </div>
 
-<script src="/content.js"></script>
+
   <script>
+    let ENTRIES = [];
+
     const pwdInput     = document.getElementById("pwd");
     const unlockBtn    = document.getElementById("unlockBtn");
     const unlockCard   = document.getElementById("unlockCard");
@@ -71,6 +73,17 @@
     const output       = document.getElementById("output");
     const modalOverlay = document.getElementById("modalOverlay");
     const modalDismiss = document.getElementById("modalDismiss");
+    async function loadEntries() {
+      const response = await fetch("/api/entries", {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load entries.");
+      }
+
+      ENTRIES = await response.json();
+    }
 
     unlockBtn.addEventListener("click", handleDecrypt);
     modalDismiss.addEventListener("click", closeModal);
@@ -153,6 +166,10 @@
       await new Promise(r => setTimeout(r, 60));
 
       try {
+        if (!ENTRIES.length) {
+            await loadEntries();
+        }
+
         // 按时间倒序排序，让新的先被尝试
         const sorted = [...ENTRIES].sort((a, b) => b.publishedAt - a.publishedAt);
         let matchedEntry = null;
