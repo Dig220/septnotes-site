@@ -58,9 +58,8 @@
     </div>
   </div>
 
+  <script src="/content.js"></script>
   <script>
-    const encryptedData = "NhRQBu8mWGqTfmEQiP+/3Fkgy22CjhsHjZoNy30rIPycLR3AMIwQylaFEBPDtzS+XtMw8UKWjf9Mw1gVvzjxMaypicYNjLeuwiHMe2HB+tudah/8TGPK/VI919F1DQz6FbEwVpsOAO+AuCvdPuqXwTc/jqOBVSsec3KB";
-
     const pwdInput     = document.getElementById("pwd");
     const unlockBtn    = document.getElementById("unlockBtn");
     const unlockCard   = document.getElementById("unlockCard");
@@ -102,7 +101,7 @@
       await new Promise(r => setTimeout(r, 60));
 
       try {
-        const data = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+        const data = Uint8Array.from(atob(ENCRYPTED_DATA), c => c.charCodeAt(0));
         const salt = data.slice(0, 16);
         const iv = data.slice(16, 28);
         const ciphertext = data.slice(28);
