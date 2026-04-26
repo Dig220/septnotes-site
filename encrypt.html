@@ -210,16 +210,17 @@
 
         // 构建过期头部
         let fullText = text;
+        let dateVal = null;
+        let utcMs = null;
         if (expiryEnabled.checked) {
-          const dateVal = document.getElementById("expiryDate").value;
+          dateVal = document.getElementById("expiryDate").value;
           const tzOffset = parseFloat(document.getElementById("expiryTz").value);
           if (!dateVal) {
             alert("Please set an expiry date and time.");
             return;
           }
           // 把用户输入的时间当作所选时区来解析，转成 UTC 时间戳
-          // "2026-04-26T12:00" + "Z" = 作为 UTC 解析，再减去时区偏移
-          const utcMs = new Date(dateVal + ":00Z").getTime() - (tzOffset * 3600000);
+          utcMs = new Date(dateVal + ":00Z").getTime() - (tzOffset * 3600000);
           fullText = `EXPIRES:${utcMs}\n` + text;
         }
 
