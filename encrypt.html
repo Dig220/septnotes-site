@@ -64,6 +64,26 @@
           spellcheck="false"
         >
 
+        <div class="expiry-section" id="expirySection">
+          <label class="input-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:20px; margin-bottom:0;">
+            <input type="checkbox" id="expiryEnabled" style="accent-color:var(--accent); width:15px; height:15px;">
+            Set expiry time
+          </label>
+          <div id="expiryControls" class="hidden" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <input type="datetime-local" id="expiryDate" class="tool-input" style="flex:1; min-width:180px;">
+            <select id="expiryTz" class="tool-input" style="max-width:210px;">
+              <option value="-4">EDT — New York Summer (UTC−4)</option>
+              <option value="-5">EST — New York Winter (UTC−5)</option>
+              <option value="-5">CDT — Chicago Summer (UTC−5)</option>
+              <option value="-6">CST — Chicago Winter (UTC−6)</option>
+              <option value="-7">PDT — LA Summer (UTC−7)</option>
+              <option value="-8">PST — LA Winter (UTC−8)</option>
+              <option value="+8">CST — Beijing/Shanghai (UTC+8)</option>
+              <option value="0">UTC</option>
+            </select>
+          </div>
+        </div>
+
         <div class="editor-tools">
           <button id="encryptBtn" class="primary-button" type="button">
             <span class="btn-label">Encrypt</span>
@@ -108,6 +128,18 @@
 
     const previewCard = document.getElementById("previewCard");
     const previewOutput = document.getElementById("previewOutput");
+
+    const expiryEnabled = document.getElementById("expiryEnabled");
+    const expiryControls = document.getElementById("expiryControls");
+
+    expiryEnabled.addEventListener("change", () => {
+      if (expiryEnabled.checked) {
+        expiryControls.classList.remove("hidden");
+        expiryControls.style.display = "flex";
+      } else {
+        expiryControls.classList.add("hidden");
+      }
+    });
 
     previewBtn.addEventListener("click", previewText);
     clearBtn.addEventListener("click", clearText);
@@ -176,11 +208,27 @@
           ["encrypt"]
         );
 
+        // 构建过期头部
+        let fullText = text;
+        if (expiryEnabled.checked) {
+          const dateVal = document.getElementById("expiryDate").value;
+          const tzOffset = parseFloat(document.getElementById("expiryTz").value);
+          if (!dateVal) {
+            alert("Please set an expiry date and time.");
+            return;
+          }
+          // 把用户输入的时间当作所选时区来解析，转成 UTC 时间戳
+          // "2026-04-26T12:00" + "Z" = 作为 UTC 解析，再减去时区偏移
+          const utcMs = new Date(dateVal + ":00Z").getTime() - (tzOffset * 3600000);
+          fullText = `EXPIRES:${utcMs}\n` + text;
+        }
+
         const encrypted = await crypto.subtle.encrypt(
           { name: "AES-GCM", iv: iv },
           key,
-          enc.encode(text)
+          enc.encode(fullText)
         );
+        
 
         const combined = new Uint8Array(
           salt.length + iv.length + encrypted.byteLength

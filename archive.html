@@ -77,7 +77,9 @@
       if (e.key === "Enter") handleDecrypt();
     });
 
-    function showModal() {
+    function showModal(title, text) {
+      document.getElementById("modalTitle").textContent = title || "Access Denied";
+      document.getElementById("modalText").textContent = text || "The passphrase you entered does not match. Please try again.";
       modalOverlay.classList.add("visible");
       modalOverlay.setAttribute("aria-hidden", "false");
       setTimeout(() => modalDismiss.focus(), 50);
@@ -141,9 +143,24 @@
 
         const text = new TextDecoder().decode(decrypted);
 
-        output.textContent = text;
+        // 检查是否有过期头部
+        let displayText = text;
+        if (text.startsWith("EXPIRES:")) {
+          const newlineIdx = text.indexOf("\n");
+          const expiryTs = parseInt(text.slice(8, newlineIdx));
+          if (Date.now() > expiryTs) {
+            showModal(
+              "Entry Expired",
+              "This entry is no longer available."
+            );
+            return;
+          }
+          displayText = text.slice(newlineIdx + 1);
+        }
+
+        output.textContent = displayText;
         unlockCard.classList.add("hidden");
-        messageCard.classList.remove("hidden");
+        messageCard.classList.remove("hidden");  
       } catch (err) {
         showModal();
       } finally {
