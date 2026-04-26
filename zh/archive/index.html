@@ -27,7 +27,25 @@
         <p class="subtitle">一个小型私人收藏。每条条目单独加密保护。</p>
       </section>
 
-      <div id="entryList" class="entry-list"></div>
+      <div class="unlock-card" id="unlockCard">
+        <label for="pwd" class="input-label">通行短语</label>
+        <div class="input-row">
+          <input id="pwd" type="password" placeholder="Type and press Enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button id="unlockBtn" type="button">
+            <span class="btn-label">解锁</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <article class="message-card hidden" id="messageCard">
+        <div class="entry-meta" style="margin-bottom: 20px;">
+          <span class="entry-num" id="entryNum"></span>
+          <span class="entry-date" id="entryDate"></span>
+          <span class="entry-badge badge-active" id="entryBadge" style="display:none;"></span>
+        </div>
+        <div class="message-content" id="output"></div>
+      </article>
     </main>
 
     <footer class="page-footer outer-footer">
@@ -44,121 +62,52 @@
     </div>
   </div>
 
-  <script src="/content.js"></script>
+<script src="/content.js"></script>
   <script>
+    const pwdInput     = document.getElementById("pwd");
+    const unlockBtn    = document.getElementById("unlockBtn");
+    const unlockCard   = document.getElementById("unlockCard");
+    const messageCard  = document.getElementById("messageCard");
+    const output       = document.getElementById("output");
     const modalOverlay = document.getElementById("modalOverlay");
-    document.getElementById("modalDismiss").addEventListener("click", closeModal);
+    const modalDismiss = document.getElementById("modalDismiss");
+
+    unlockBtn.addEventListener("click", handleDecrypt);
+    modalDismiss.addEventListener("click", closeModal);
+    pwdInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") handleDecrypt();
+    });
 
     function showModal(title, text) {
       document.getElementById("modalTitle").textContent = title || "无法访问";
       document.getElementById("modalText").textContent = text || "你输入的通行短语不匹配，请重新尝试。";
       modalOverlay.classList.add("visible");
       modalOverlay.setAttribute("aria-hidden", "false");
-      setTimeout(() => document.getElementById("modalDismiss").focus(), 50);
+      setTimeout(() => modalDismiss.focus(), 50);
     }
 
     function closeModal() {
       modalOverlay.classList.remove("visible");
       modalOverlay.setAttribute("aria-hidden", "true");
+      pwdInput.value = "";
+      pwdInput.focus();
     }
 
     function formatDate(ts) {
-      return new Date(ts).toLocaleDateString("zh-CN", {
+      return new Date(ts).toLocaleDateString("en-US", {
         year: "numeric", month: "long", day: "numeric"
       });
     }
 
     function formatExpiry(ts) {
-      return new Date(ts).toLocaleDateString("zh-CN", {
-        month: "numeric", day: "numeric", year: "numeric",
+      return new Date(ts).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
         hour: "2-digit", minute: "2-digit"
       });
     }
 
-    function isExpired(entry) {
-      return entry.expiresAt && Date.now() > entry.expiresAt;
-    }
-
-    function renderEntries() {
-      const list = document.getElementById("entryList");
-      const sorted = [...ENTRIES].sort((a, b) => b.publishedAt - a.publishedAt);
-
-      if (sorted.length === 0) {
-        list.innerHTML = '<p style="color:var(--ink-muted);font-style:italic;margin-top:8px;">暂无条目。</p>';
-        return;
-      }
-
-      sorted.forEach((entry, idx) => {
-        const expired = isExpired(entry);
-        const num = String(sorted.length - idx).padStart(2, "0");
-
-        let badgeHtml = "";
-        if (entry.expiresAt) {
-          badgeHtml = expired
-            ? `<span class="entry-badge badge-expired">已过期</span>`
-            : `<span class="entry-badge badge-active">有效 · 过期于 ${formatExpiry(entry.expiresAt)}</span>`;
-        }
-
-        const item = document.createElement("div");
-        item.className = "entry-item" + (expired ? " entry-is-expired" : "");
-        item.innerHTML = `
-          <div class="entry-header">
-            <div class="entry-meta">
-              <span class="entry-num">${num}</span>
-              <span class="entry-date">${formatDate(entry.publishedAt)}</span>
-              ${badgeHtml}
-            </div>
-            <button class="entry-unlock-btn secondary-button" data-id="${entry.id}" ${expired ? "disabled" : ""}>
-              ${expired ? "已过期" : "解锁 →"}
-            </button>
-          </div>
-          <div class="entry-form hidden" id="form-${entry.id}">
-            <div class="entry-input-row">
-              <input type="password" class="tool-input entry-pwd"
-                placeholder="输入通行短语后按 Enter"
-                autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-              <button class="primary-button entry-submit" type="button">
-                <span class="btn-label">解锁</span>
-                <span class="btn-spinner" aria-hidden="true"></span>
-              </button>
-            </div>
-          </div>
-          <div class="entry-content hidden" id="content-${entry.id}">
-            <div class="message-content"></div>
-          </div>
-        `;
-
-        list.appendChild(item);
-
-        if (!expired) {
-          const toggleBtn = item.querySelector(".entry-unlock-btn");
-          const form = document.getElementById(`form-${entry.id}`);
-          const pwdInput = item.querySelector(".entry-pwd");
-          const submitBtn = item.querySelector(".entry-submit");
-
-          toggleBtn.addEventListener("click", () => {
-            const opening = form.classList.contains("hidden");
-            form.classList.toggle("hidden");
-            toggleBtn.textContent = opening ? "取消" : "解锁 →";
-            if (opening) pwdInput.focus();
-          });
-
-          const doDecrypt = () => handleDecrypt(entry, item, pwdInput, submitBtn, toggleBtn);
-          submitBtn.addEventListener("click", doDecrypt);
-          pwdInput.addEventListener("keydown", e => { if (e.key === "Enter") doDecrypt(); });
-        }
-      });
-    }
-
-    async function handleDecrypt(entry, item, pwdInput, submitBtn, toggleBtn) {
-      const password = pwdInput.value;
-      if (!password) { pwdInput.focus(); return; }
-      if (submitBtn.disabled) return;
-
-      submitBtn.classList.add("loading");
-      submitBtn.disabled = true;
-      await new Promise(r => setTimeout(r, 60));
-
+    // 尝试用某个密码解一条 entry。成功返回明文（去掉过期头），过期返回 "EXPIRED"，失败返回 null
+    async function tryDecryptEntry(entry, password) {
       try {
         const data = Uint8Array.from(atob(entry.data), c => c.charCodeAt(0));
         const salt = data.slice(0, 16);
@@ -177,30 +126,80 @@
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
 
         let text = new TextDecoder().decode(decrypted);
+
+        // 检查内嵌过期头
         if (text.startsWith("EXPIRES:")) {
           const nl = text.indexOf("\n");
-          if (Date.now() > parseInt(text.slice(8, nl))) {
-            showModal("条目已过期", "该条目已不再可见。");
-            return;
-          }
+          const expiryTs = parseInt(text.slice(8, nl));
+          if (Date.now() > expiryTs) return "EXPIRED";
           text = text.slice(nl + 1);
         }
+        // 检查 manifest 上的 expiresAt
+        if (entry.expiresAt && Date.now() > entry.expiresAt) return "EXPIRED";
 
-        const contentDiv = document.getElementById(`content-${entry.id}`);
-        contentDiv.querySelector(".message-content").textContent = text;
-        contentDiv.classList.remove("hidden");
-        document.getElementById(`form-${entry.id}`).classList.add("hidden");
-        toggleBtn.classList.add("hidden");
-
+        return text;
       } catch {
-        showModal();
-      } finally {
-        submitBtn.classList.remove("loading");
-        submitBtn.disabled = false;
+        return null;  // 这个密码解不开这一条
       }
     }
 
-    renderEntries();
+    async function handleDecrypt() {
+      const password = pwdInput.value;
+      if (!password) { pwdInput.focus(); return; }
+      if (unlockBtn.disabled) return;
+
+      unlockBtn.classList.add("loading");
+      unlockBtn.disabled = true;
+      await new Promise(r => setTimeout(r, 60));
+
+      try {
+        // 按时间倒序排序，让新的先被尝试
+        const sorted = [...ENTRIES].sort((a, b) => b.publishedAt - a.publishedAt);
+        let matchedEntry = null;
+        let matchedText = null;
+        let expiredHit = false;
+
+        for (let i = 0; i < sorted.length; i++) {
+          const result = await tryDecryptEntry(sorted[i], password);
+          if (result === "EXPIRED") {
+            expiredHit = true;
+            // 不 break——继续看后面有没有未过期的同密码条目
+          } else if (result !== null) {
+            matchedEntry = sorted[i];
+            matchedText = result;
+            break;
+          }
+        }
+
+        if (matchedEntry) {
+          // 解出来了，显示内容和元信息
+          const idx = sorted.indexOf(matchedEntry);
+          const num = String(sorted.length - idx).padStart(2, "0");
+
+          document.getElementById("entryNum").textContent = num;
+          document.getElementById("entryDate").textContent = formatDate(matchedEntry.publishedAt);
+
+          const badge = document.getElementById("entryBadge");
+          if (matchedEntry.expiresAt) {
+            badge.textContent = "过期于 " + formatExpiry(matchedEntry.expiresAt);
+            badge.style.display = "";
+          } else {
+            badge.style.display = "none";
+          }
+
+          output.textContent = matchedText;
+          unlockCard.classList.add("hidden");
+          messageCard.classList.remove("hidden");
+        } else if (expiredHit) {
+          showModal("条目已过期", "该条目已不再可见。");
+        } else {
+          showModal();
+        }
+      } finally {
+        unlockBtn.classList.remove("loading");
+        unlockBtn.disabled = false;
+      }
+    }
   </script>
 </body>
 </html>
