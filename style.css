@@ -800,3 +800,125 @@ body {
 .zh-page .note-list li {
   line-height: 1.9;
 }
+
+/* ============================================
+   Entry list (archive multi-entry)
+   ============================================ */
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.entry-item {
+  border-top: 1px solid var(--rule);
+  padding: 24px 0;
+}
+
+.entry-item:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.entry-is-expired {
+  opacity: 0.5;
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.entry-num {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  min-width: 20px;
+}
+
+.entry-date {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.entry-badge {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.badge-active {
+  background: #edf7f0;
+  color: #3a7d52;
+}
+
+.badge-expired {
+  background: #f5f0ee;
+  color: var(--ink-muted);
+}
+
+.entry-unlock-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.entry-unlock-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.entry-form {
+  margin-top: 16px;
+}
+
+.entry-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.entry-input-row .tool-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  font-size: 16px;
+}
+
+.entry-input-row .primary-button {
+  position: relative;
+  min-width: 100px;
+  height: 46px;
+  padding: 0 20px;
+}
+
+.entry-content {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  animation: revealIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (max-width: 640px) {
+  .entry-header { gap: 12px; }
+  .entry-date { font-size: 16px; }
+  .entry-input-row { flex-direction: column; }
+  .entry-input-row .primary-button { height: 46px; width: 100%; }
+}

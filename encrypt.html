@@ -106,7 +106,7 @@
         </div>
 
         <p class="tool-note">
-          Paste this encrypted output into <code>archive.html</code> as the value of <code>encryptedData</code>.
+          Copy this snippet and paste it inside the <code>ENTRIES = [ ]</code> array in <code>content.js</code>. Separate multiple entries with a comma.
         </p>
       </section>
     </main>
@@ -228,7 +228,7 @@
           key,
           enc.encode(fullText)
         );
-        
+
 
         const combined = new Uint8Array(
           salt.length + iv.length + encrypted.byteLength
@@ -239,7 +239,15 @@
         combined.set(new Uint8Array(encrypted), salt.length + iv.length);
 
         const base64 = btoa(String.fromCharCode(...combined));
-        output.value = base64;
+
+        // 生成可直接粘贴进 content.js 的条目片段
+        const newId = "entry-" + Date.now();
+        const expiryValue = (expiryEnabled.checked && dateVal)
+          ? utcMs
+          : "null";
+        const snippet =
+          `  {\n    id: "${newId}",\n    publishedAt: ${Date.now()},\n    expiresAt: ${expiryValue},\n    data: "${base64}"\n  }`;
+        output.value = snippet;
       } catch (error) {
         alert("Encryption failed. Please try again.");
       } finally {

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="/style.css?v=4" />
 </head>
 <body>
   <div class="page-wrapper">
@@ -24,24 +24,10 @@
       <section class="hero">
         <p class="section-label">Restricted Section</p>
         <h1 class="title">Archive</h1>
-        <p class="subtitle">A small private collection. Enter the passphrase to read.</p>
+        <p class="subtitle">A small private collection. Each entry is protected individually.</p>
       </section>
 
-      <div class="unlock-card" id="unlockCard">
-        <label for="pwd" class="input-label">Passphrase</label>
-        <div class="input-row">
-          <input id="pwd" type="password" placeholder="Type and press Enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-          <button id="unlockBtn" type="button">
-            <span class="btn-label">Unlock</span>
-            <span class="btn-spinner" aria-hidden="true"></span>
-          </button>
-        </div>
-      </div>
-
-      <article class="message-card hidden" id="messageCard">
-        <p class="section-label">Entry</p>
-        <div class="message-content" id="output"></div>
-      </article>
+      <div id="entryList" class="entry-list"></div>
     </main>
 
     <footer class="page-footer outer-footer">
@@ -49,7 +35,6 @@
     </footer>
   </div>
 
-  <!-- Wrong-password modal -->
   <div class="modal-overlay" id="modalOverlay" aria-hidden="true">
     <div class="modal" role="alertdialog" aria-labelledby="modalTitle" aria-describedby="modalText">
       <p class="modal-eyebrow">Error</p>
@@ -59,115 +44,163 @@
     </div>
   </div>
 
-
   <script src="/content.js"></script>
-
   <script>
-    const pwdInput     = document.getElementById("pwd");
-    const unlockBtn    = document.getElementById("unlockBtn");
-    const unlockCard   = document.getElementById("unlockCard");
-    const messageCard  = document.getElementById("messageCard");
-    const output       = document.getElementById("output");
     const modalOverlay = document.getElementById("modalOverlay");
-    const modalDismiss = document.getElementById("modalDismiss");
-
-    unlockBtn.addEventListener("click", handleDecrypt);
-    modalDismiss.addEventListener("click", closeModal);
-    pwdInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleDecrypt();
-    });
+    document.getElementById("modalDismiss").addEventListener("click", closeModal);
 
     function showModal(title, text) {
       document.getElementById("modalTitle").textContent = title || "Access Denied";
       document.getElementById("modalText").textContent = text || "The passphrase you entered does not match. Please try again.";
       modalOverlay.classList.add("visible");
       modalOverlay.setAttribute("aria-hidden", "false");
-      setTimeout(() => modalDismiss.focus(), 50);
+      setTimeout(() => document.getElementById("modalDismiss").focus(), 50);
     }
 
     function closeModal() {
       modalOverlay.classList.remove("visible");
       modalOverlay.setAttribute("aria-hidden", "true");
-      pwdInput.value = "";
-      pwdInput.focus();
     }
 
-    async function handleDecrypt() {
-      const password = pwdInput.value;
-      if (!password) {
-        pwdInput.focus();
+    function formatDate(ts) {
+      return new Date(ts).toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric"
+      });
+    }
+
+    function formatExpiry(ts) {
+      return new Date(ts).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    function isExpired(entry) {
+      return entry.expiresAt && Date.now() > entry.expiresAt;
+    }
+
+    function renderEntries() {
+      const list = document.getElementById("entryList");
+      const sorted = [...ENTRIES].sort((a, b) => b.publishedAt - a.publishedAt);
+
+      if (sorted.length === 0) {
+        list.innerHTML = '<p style="color:var(--ink-muted);font-style:italic;margin-top:8px;">No entries yet.</p>';
         return;
       }
-      if (unlockBtn.disabled) return;
 
-      unlockBtn.classList.add("loading");
-      unlockBtn.disabled = true;
+      sorted.forEach((entry, idx) => {
+        const expired = isExpired(entry);
+        const num = String(sorted.length - idx).padStart(2, "0");
 
-      // Tiny delay so the spinner paints before the heavy crypto work
+        let badgeHtml = "";
+        if (entry.expiresAt) {
+          badgeHtml = expired
+            ? `<span class="entry-badge badge-expired">Expired</span>`
+            : `<span class="entry-badge badge-active">Active · expires ${formatExpiry(entry.expiresAt)}</span>`;
+        }
+
+        const item = document.createElement("div");
+        item.className = "entry-item" + (expired ? " entry-is-expired" : "");
+        item.innerHTML = `
+          <div class="entry-header">
+            <div class="entry-meta">
+              <span class="entry-num">${num}</span>
+              <span class="entry-date">${formatDate(entry.publishedAt)}</span>
+              ${badgeHtml}
+            </div>
+            <button class="entry-unlock-btn secondary-button" data-id="${entry.id}" ${expired ? "disabled" : ""}>
+              ${expired ? "Expired" : "Unlock →"}
+            </button>
+          </div>
+          <div class="entry-form hidden" id="form-${entry.id}">
+            <div class="entry-input-row">
+              <input type="password" class="tool-input entry-pwd"
+                placeholder="Enter passphrase"
+                autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <button class="primary-button entry-submit" type="button">
+                <span class="btn-label">Unlock</span>
+                <span class="btn-spinner" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <div class="entry-content hidden" id="content-${entry.id}">
+            <div class="message-content"></div>
+          </div>
+        `;
+
+        list.appendChild(item);
+
+        if (!expired) {
+          const toggleBtn = item.querySelector(".entry-unlock-btn");
+          const form = document.getElementById(`form-${entry.id}`);
+          const pwdInput = item.querySelector(".entry-pwd");
+          const submitBtn = item.querySelector(".entry-submit");
+
+          toggleBtn.addEventListener("click", () => {
+            const opening = form.classList.contains("hidden");
+            form.classList.toggle("hidden");
+            toggleBtn.textContent = opening ? "Cancel" : "Unlock →";
+            if (opening) pwdInput.focus();
+          });
+
+          const doDecrypt = () => handleDecrypt(entry, item, pwdInput, submitBtn, toggleBtn);
+          submitBtn.addEventListener("click", doDecrypt);
+          pwdInput.addEventListener("keydown", e => { if (e.key === "Enter") doDecrypt(); });
+        }
+      });
+    }
+
+    async function handleDecrypt(entry, item, pwdInput, submitBtn, toggleBtn) {
+      const password = pwdInput.value;
+      if (!password) { pwdInput.focus(); return; }
+      if (submitBtn.disabled) return;
+
+      submitBtn.classList.add("loading");
+      submitBtn.disabled = true;
       await new Promise(r => setTimeout(r, 60));
 
       try {
-        const data = Uint8Array.from(atob(ENCRYPTED_DATA), c => c.charCodeAt(0));
+        const data = Uint8Array.from(atob(entry.data), c => c.charCodeAt(0));
         const salt = data.slice(0, 16);
         const iv = data.slice(16, 28);
         const ciphertext = data.slice(28);
-
         const enc = new TextEncoder();
 
         const keyMaterial = await crypto.subtle.importKey(
-          "raw",
-          enc.encode(password),
-          { name: "PBKDF2" },
-          false,
-          ["deriveKey"]
+          "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
         );
-
         const key = await crypto.subtle.deriveKey(
-          {
-            name: "PBKDF2",
-            salt: salt,
-            iterations: 200000,
-            hash: "SHA-256"
-          },
+          { name: "PBKDF2", salt, iterations: 200000, hash: "SHA-256" },
           keyMaterial,
-          { name: "AES-GCM", length: 256 },
-          false,
-          ["decrypt"]
+          { name: "AES-GCM", length: 256 }, false, ["decrypt"]
         );
+        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
 
-        const decrypted = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: iv },
-          key,
-          ciphertext
-        );
-
-        const text = new TextDecoder().decode(decrypted);
-
-        // 检查是否有过期头部
-        let displayText = text;
+        let text = new TextDecoder().decode(decrypted);
         if (text.startsWith("EXPIRES:")) {
-          const newlineIdx = text.indexOf("\n");
-          const expiryTs = parseInt(text.slice(8, newlineIdx));
-          if (Date.now() > expiryTs) {
-            showModal(
-              "Entry Expired",
-              "This entry is no longer available."
-            );
+          const nl = text.indexOf("\n");
+          if (Date.now() > parseInt(text.slice(8, nl))) {
+            showModal("Entry Expired", "This entry is no longer available.");
             return;
           }
-          displayText = text.slice(newlineIdx + 1);
+          text = text.slice(nl + 1);
         }
 
-        output.textContent = displayText;
-        unlockCard.classList.add("hidden");
-        messageCard.classList.remove("hidden");  
-      } catch (err) {
+        const contentDiv = document.getElementById(`content-${entry.id}`);
+        contentDiv.querySelector(".message-content").textContent = text;
+        contentDiv.classList.remove("hidden");
+        document.getElementById(`form-${entry.id}`).classList.add("hidden");
+        toggleBtn.classList.add("hidden");
+
+      } catch {
         showModal();
       } finally {
-        unlockBtn.classList.remove("loading");
-        unlockBtn.disabled = false;
+        submitBtn.classList.remove("loading");
+        submitBtn.disabled = false;
       }
     }
+
+    renderEntries();
   </script>
 </body>
 </html>
