@@ -212,6 +212,8 @@
         } else {
           showModal();
         }
+      } catch (error) {
+        showModal("连接错误", "档案条目暂时无法加载，请稍后再试。");
       } finally {
         unlockBtn.classList.remove("loading");
         unlockBtn.disabled = false;
